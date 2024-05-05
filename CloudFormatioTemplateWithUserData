@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Template to create an EC2 instance with Apache HTTP Server installed
+
+Parameters:
+  KeyName:
+    Description: Name of SSH KeyPair
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: Provide the name of an existing SSH key pair
+
+Resources:
+  MyEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: t3.micro
+      ImageId: ami-0b5eea76982371e91
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update -y
+          sudo yum install -y httpd
+          sudo systemctl start httpd
+          sudo systemctl enable httpd
+          sudo firewall-cmd --zone=public --add-port=80/tcp --permanent
+          sudo firewall-cmd --reload
+          PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+          echo "Public IP address of the instance: $PUBLIC_IP"
+      Tags:
+        - Key: Name
+          Value: My CF Instance
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: CloudFormationSecurityGroup
+      GroupDescription: Enable SSH and HTTP access via ports 22 and 80
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  InstanceID:
+    Description: The Instance ID
+    Value: !Ref MyEC2Instance
+  PublicIP:
+    Description: The public IP address of the instance
+    Value: !GetAtt MyEC2Instance.PublicIp
