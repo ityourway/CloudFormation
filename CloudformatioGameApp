@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Template to create an EC2 instance with a Node.js application running on port 3000
+
+Parameters:
+  KeyName:
+    Description: Name of SSH KeyPair
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: Provide the name of an existing SSH key pair
+
+Resources:
+  MyEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: t3.micro
+      ImageId: ami-0b5eea76982371e91
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo apt update -y
+          sudo apt upgrade -y
+          sudo apt install -y nodejs npm git
+          git clone https://github.com/ityourway/Snake-Game-app.git
+          cd Snake-Game-app
+          npm install
+          npm start
+          echo "Node.js application running on port 3000"
+      Tags:
+        - Key: Name
+          Value: My CF Instance
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: CloudFormationSecurityGroup
+      GroupDescription: Enable SSH and HTTP access via ports 22 and 3000
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  InstanceID:
+    Description: The Instance ID
+    Value: !Ref MyEC2Instance
